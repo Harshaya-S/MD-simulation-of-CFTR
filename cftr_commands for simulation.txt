@@ -1,0 +1,62 @@
+### **Separating Protein and Peptide Atoms from a Complex PDB File in HPC using `grep`**  
+
+You can use **grep, awk, or sed** to extract protein and peptide atoms from your **complex PDB file** on HPC. Here's how:
+
+---
+
+### **1️⃣ Count the Atoms in the PDB File**
+Run this command to count the total number of atoms in the PDB file:  
+```bash
+grep "^ATOM" Docks_ligand7_out_complex.pdb | wc -l
+```
+
+---
+
+### **2️⃣ Identify the Boundary Between Protein and Peptide**
+Your **protein atoms** appear **before the `REMARK` section**, and the **peptide atoms appear after**. To locate the transition:
+```bash
+grep -n "^REMARK" Docks_ligand7_out_complex.pdb
+```
+This will show the line number where **REMARK** statements start, helping you know where to split the file.
+
+---
+
+### **3️⃣ Extract Protein Atoms**
+To **extract only the protein atoms** (lines before REMARK):  
+```bash
+awk '/^ATOM/ && NR < remark_line {print}' remark_line=$(grep -n "^REMARK" Docks_ligand7_out_complex.pdb | head -1 | cut -d: -f1) Docks_ligand7_out_complex.pdb > protein.pdb
+```
+
+OR using `grep` with line numbers:
+```bash
+head -n $(($(grep -n "^REMARK" Docks_ligand7_out_complex.pdb | head -1 | cut -d: -f1) - 1)) Docks_ligand7_out_complex.pdb > protein.pdb
+```
+
+---
+
+### **4️⃣ Extract Peptide Atoms**
+To **extract only the peptide atoms** (lines after REMARK):  
+```bash
+awk '/^ATOM/ && NR > remark_line {print}' remark_line=$(grep -n "^REMARK" Docks_ligand7_out_complex.pdb | head -1 | cut -d: -f1) Docks_ligand7_out_complex.pdb > peptide.pdb
+```
+
+OR using `grep` with `tail`:
+```bash
+tail -n +$(grep -n "^REMARK" Docks_ligand7_out_complex.pdb | head -1 | cut -d: -f1) Docks_ligand7_out_complex.pdb > peptide.pdb
+```
+
+---
+
+### **5️⃣ Verify the Output Files**
+After running the above commands, check the number of atoms in the new files:
+```bash
+grep "^ATOM" protein.pdb | wc -l
+grep "^ATOM" peptide.pdb | wc -l
+```
+
+---
+
+### **Done! 🎯**  
+Now you have `protein.pdb` and `peptide.pdb` separated from the complex file. You can use them for further MD simulations in GROMACS.
+
+Let me know if you need modifications based on your specific PDB format! 🚀
